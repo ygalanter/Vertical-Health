@@ -1,21 +1,21 @@
-#include <pebble.h>
+#include "utils.h"
 
-static Window *s_window;
-static TextLayer *s_text_layer;
+static void graphics_update_proc(Layer *layer, GContext *ctx) {
 
+  clear_screen(ctx);
+
+  draw_white_columns(ctx);
+
+  draw_grey_columns(ctx, (int[]){ 40, 80, 30, 20, 70 });
+  
+}
 
 static void prv_window_load(Window *window) {
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(window_layer);
 
-  s_text_layer = text_layer_create(GRect(0, 72, bounds.size.w, 20));
-  text_layer_set_text(s_text_layer, "Press a button");
-  text_layer_set_text_alignment(s_text_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(s_text_layer));
 }
 
 static void prv_window_unload(Window *window) {
-  text_layer_destroy(s_text_layer);
+ 
 }
 
 static void prv_init(void) {
@@ -24,8 +24,17 @@ static void prv_init(void) {
     .load = prv_window_load,
     .unload = prv_window_unload,
   });
-  const bool animated = true;
-  window_stack_push(s_window, animated);
+  window_stack_push(s_window, false);
+
+  window_layer = window_get_root_layer(s_window);
+  bounds = layer_get_bounds(window_layer);
+  center = grect_center_point(&bounds);
+
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Window bounds: %d x %d", bounds.size.w, bounds.size.h);
+
+  graphics_layer = layer_create(bounds);
+  layer_set_update_proc(graphics_layer, graphics_update_proc);
+  layer_add_child(window_layer, graphics_layer);
 }
 
 static void prv_deinit(void) {
