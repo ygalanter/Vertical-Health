@@ -2,9 +2,13 @@
   "name": "Vertical",
   "author": "MakeAwesomeHappen",
   "version": "1.0.0",
-  "keywords": ["pebble-app"],
+  "keywords": [
+    "pebble-app"
+  ],
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "pebble-effect-layer": "^1.1.4"
+  },
   "scripts": {
     "build": "pebble build",
     "clean": "pebble clean",
@@ -26,7 +30,14 @@
       "dummy"
     ],
     "resources": {
-      "media": []
+      "media": [
+        {
+          "characterRegex": "[0-9:]",
+          "file": "fonts/LECO 1976 Regular.ttf",
+          "name": "LECO_50",
+          "type": "font"
+        }
+      ]
     }
   }
 }
