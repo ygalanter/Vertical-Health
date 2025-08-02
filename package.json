@@ -1,0 +1,32 @@
+{
+  "name": "Vertical",
+  "author": "MakeAwesomeHappen",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "scripts": {
+    "build": "pebble build",
+    "clean": "pebble clean",
+    "wipe": "pebble wipe",
+    "start": "pebble clean && pebble wipe && pebble build && pebble install --emulator diorite"
+  },
+  "pebble": {
+    "displayName": "Vertical",
+    "uuid": "adb29e88-8b53-4f67-afd9-ff95a5622e7d",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "diorite"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "dummy"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}
