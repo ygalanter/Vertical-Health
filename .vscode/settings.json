@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.view": "xml",
+        "pebble-effect-layer.h": "c"
+    }
+}
