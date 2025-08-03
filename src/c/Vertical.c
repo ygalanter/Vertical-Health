@@ -4,7 +4,7 @@
 EffectLayer *effect_data_layer;
 TextLayer *time_layer;
 
-char s_time[6];  // Changed from char s_time[1][5] to simple char array
+char s_time[6];
 char date_strings[5][20];
 
 void tick_handler(struct tm *tick_time, TimeUnits units_changed)
@@ -36,11 +36,6 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
     {
       text_layer_set_text(time_layer, s_time);
     }
-    
-    // Update battery percentage every minute
-    int battery_percent = battery_state_service_peek().charge_percent;
-    snprintf(date_strings[4], 20, "%d%%", battery_percent);
-    layer_mark_dirty(data_layer); // Redraw data layer for battery update
   }
 
   // Update date only when day changes
@@ -51,10 +46,6 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
     strftime(date_strings[1], 20, "%B", tick_time); // Month name
     strftime(date_strings[2], 20, "%d", tick_time); // Day number
     strftime(date_strings[3], 20, "%Y", tick_time); // Year
-    
-    // Get battery percentage and format it
-    int battery_percent = battery_state_service_peek().charge_percent;
-    snprintf(date_strings[4], 20, "%d%%", battery_percent); // Battery percentage with % symbol
 
     // Convert to uppercase
     for (int i = 0; i < 4; i++) {
@@ -68,6 +59,13 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
     // Force redraw of data layer
     layer_mark_dirty(data_layer);
   }
+}
+
+static void battery_state_handler(BatteryChargeState charge_state) {
+  // Update battery percentage when battery state changes
+  snprintf(date_strings[4], 20, "%d%%", charge_state.charge_percent);
+  layer_mark_dirty(data_layer); // Redraw data layer for battery update
+  layer_mark_dirty(graphics_layer); // Redraw graphics layer for battery bar update
 }
 
 static void graphics_update_proc(Layer *layer, GContext *ctx)
@@ -86,9 +84,6 @@ static void graphics_update_proc(Layer *layer, GContext *ctx)
   int day_of_month_percent = current_time->tm_mday * 100 / 31; // Approximate, assuming max 31 days
   int year_percent = (current_time->tm_year + 1900) * 100 / 5000; // tm_year is years since 1900
   int battery_percent = battery_state_service_peek().charge_percent; // Battery percentage
-  
-  // Cap year percentage at 100% if it exceeds 2500
-  if (year_percent > 100) year_percent = 100;
 
   draw_grey_columns(ctx, (int[]){day_of_week_percent, month_percent, day_of_month_percent, year_percent, battery_percent});
 }
@@ -151,6 +146,7 @@ static void prv_init(void)
   layer_add_child(window_layer, text_layer_get_layer(time_layer));
 
   tick_timer_service_subscribe(MINUTE_UNIT | DAY_UNIT, tick_handler);
+  battery_state_service_subscribe(battery_state_handler);
 
   // Get a time structure so that the face doesn't start blank
   time_t temp = time(NULL);
@@ -158,11 +154,24 @@ static void prv_init(void)
 
   // Manually call the tick handler when the window is loading
   tick_handler(t, DAY_UNIT | MINUTE_UNIT);
+  
+  // Manually call the battery handler to show battery percentage on load
+  battery_state_handler(battery_state_service_peek());
 }
 
 static void prv_deinit(void)
 {
+  // Unsubscribe from services
+  tick_timer_service_unsubscribe();
+  battery_state_service_unsubscribe();
+  
+  // Destroy layers
   text_layer_destroy(time_layer);
+  effect_layer_destroy(effect_data_layer);
+  layer_destroy(data_layer);
+  layer_destroy(graphics_layer);
+  
+  // Destroy window
   window_destroy(s_window);
 }
 
