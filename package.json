@@ -1,13 +1,14 @@
 {
-  "name": "Vertical",
+  "name": "vertical-health",
   "author": "MakeAwesomeHappen",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "keywords": [
     "pebble-app"
   ],
   "private": true,
   "dependencies": {
-    "pebble-effect-layer": "^1.1.4"
+    "pebble-effect-layer": "^1.1.4",
+    "pebble-simple-health": "^1.0.6"
   },
   "scripts": {
     "build": "pebble build",
@@ -38,6 +39,31 @@
           "file": "fonts/LECO 1976 Regular.ttf",
           "name": "LECO_50",
           "type": "font"
+        },
+        {
+          "file": "icons/steps.png",
+          "name": "STEPS",
+          "type": "bitmap"
+        },
+        {
+          "file": "icons/distance.png",
+          "name": "DISTANCE",
+          "type": "bitmap"
+        },
+        {
+          "file": "icons/calories.png",
+          "name": "CALORIES",
+          "type": "bitmap"
+        },
+        {
+          "file": "icons/activeMinutes.png",
+          "name": "ACTIVEMINUTES",
+          "type": "bitmap"
+        },
+        {
+          "file": "icons/heartRate.png",
+          "name": "HEARTRATE",
+          "type": "bitmap"
         }
       ]
     }

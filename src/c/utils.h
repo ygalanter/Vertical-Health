@@ -1,6 +1,8 @@
 #include <pebble.h>
 #pragma once
 
+bool showing_health_data;
+
 static Window *s_window;
 
 GRect bounds; GPoint center;
