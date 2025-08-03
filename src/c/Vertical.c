@@ -4,31 +4,69 @@
 EffectLayer *effect_data_layer;
 TextLayer *time_layer;
 
-char s_time[] = "00:00";
+char s_time[6];  // Changed from char s_time[1][5] to simple char array
+char date_strings[5][20];
 
 void tick_handler(struct tm *tick_time, TimeUnits units_changed)
 {
-  char format[5];
 
-  // building format 12h/24h
-  if (clock_is_24h_style())
+  if (units_changed & MINUTE_UNIT)
   {
-    strcpy(format, "%H:%M"); // e.g "14:46"
-  }
-  else
-  {
-    strcpy(format, "%l:%M"); // e.g " 2:46" -- with leading space
+    // Redraw the graphics layer every minute
+
+    char format[5];
+
+    // building format 12h/24h
+    if (clock_is_24h_style())
+    {
+      strcpy(format, "%H:%M"); // e.g "14:46"
+    }
+    else
+    {
+      strcpy(format, "%l:%M"); // e.g " 2:46" -- with leading space
+    }
+
+    strftime(s_time, sizeof(s_time), format, tick_time);
+
+    if (s_time[0] == ' ')
+    { // if in 12h mode we have leading space in time - don't display it (it will screw centering of text) start with next char
+      text_layer_set_text(time_layer, &s_time[1]);
+    }
+    else
+    {
+      text_layer_set_text(time_layer, s_time);
+    }
+    
+    // Update battery percentage every minute
+    int battery_percent = battery_state_service_peek().charge_percent;
+    snprintf(date_strings[4], 20, "%d%%", battery_percent);
+    layer_mark_dirty(data_layer); // Redraw data layer for battery update
   }
 
-  strftime(s_time, sizeof(s_time), format, tick_time);
-
-  if (s_time[0] == ' ')
-  { // if in 12h mode we have leading space in time - don't display it (it will screw centering of text) start with next char
-    text_layer_set_text(time_layer, &s_time[1]);
-  }
-  else
+  // Update date only when day changes
+  if (units_changed & DAY_UNIT)
   {
-    text_layer_set_text(time_layer, s_time);
+    // Update date strings
+    strftime(date_strings[0], 20, "%A", tick_time); // Day name
+    strftime(date_strings[1], 20, "%B", tick_time); // Month name
+    strftime(date_strings[2], 20, "%d", tick_time); // Day number
+    strftime(date_strings[3], 20, "%Y", tick_time); // Year
+    
+    // Get battery percentage and format it
+    int battery_percent = battery_state_service_peek().charge_percent;
+    snprintf(date_strings[4], 20, "%d%%", battery_percent); // Battery percentage with % symbol
+
+    // Convert to uppercase
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; date_strings[i][j]; j++) {
+        if (date_strings[i][j] >= 'a' && date_strings[i][j] <= 'z') {
+          date_strings[i][j] = date_strings[i][j] - 'a' + 'A';
+        }
+      }
+    }
+
+    // Force redraw of data layer
+    layer_mark_dirty(data_layer);
   }
 }
 
@@ -39,18 +77,32 @@ static void graphics_update_proc(Layer *layer, GContext *ctx)
 
   draw_white_columns(ctx);
 
-  draw_grey_columns(ctx, (int[]){40, 80, 30, 20, 70});
+  // Calculate dynamic percentages based on current date
+  time_t temp = time(NULL);
+  struct tm *current_time = localtime(&temp);
+  
+  int day_of_week_percent = ((current_time->tm_wday == 0 ? 7 : current_time->tm_wday) * 100) / 7; // Sunday=7, Monday=1, etc.
+  int month_percent = (current_time->tm_mon + 1) * 100 / 12; // tm_mon is 0-11, so add 1
+  int day_of_month_percent = current_time->tm_mday * 100 / 31; // Approximate, assuming max 31 days
+  int year_percent = (current_time->tm_year + 1900) * 100 / 5000; // tm_year is years since 1900
+  int battery_percent = battery_state_service_peek().charge_percent; // Battery percentage
+  
+  // Cap year percentage at 100% if it exceeds 2500
+  if (year_percent > 100) year_percent = 100;
+
+  draw_grey_columns(ctx, (int[]){day_of_week_percent, month_percent, day_of_month_percent, year_percent, battery_percent});
 }
 
 static void data_update_proc(Layer *layer, GContext *ctx)
 {
-
-  const char *text_lines[] = {
-      "Line One",
-      "Line Two",
-      "Line Three",
-      "Line Four",
-      "Line Five"};
+  // Convert 2D array to array of pointers for compatibility
+  const char* text_lines[5] = {
+    date_strings[0],
+    date_strings[1], 
+    date_strings[2],
+    date_strings[3],
+    date_strings[4]
+  };
 
   draw_text_lines(ctx, text_lines, 5);
 }
@@ -98,7 +150,7 @@ static void prv_init(void)
   text_layer_set_text_alignment(time_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(time_layer));
 
-  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  tick_timer_service_subscribe(MINUTE_UNIT | DAY_UNIT, tick_handler);
 
   // Get a time structure so that the face doesn't start blank
   time_t temp = time(NULL);
