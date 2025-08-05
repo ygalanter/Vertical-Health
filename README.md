@@ -1,4 +1,4 @@
-# Vertical - Pebble Watchface
+# Vertical-Health Watchface
 
 A minimalist vertical column-based watchface for Pebble smartwatches featuring dual-mode display with date information and health metrics.
 
