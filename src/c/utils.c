@@ -97,7 +97,11 @@ void draw_text_lines(GContext *ctx, const char *lines[], int line_count)
   graphics_context_set_text_color(ctx, GColorBlack);
 
   // Use a system font
-  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+  #if PBL_DISPLAY_HEIGHT == 228
+    GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+  #else
+    GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+  #endif
 
   // Use similar calculations as bars for consistency
   int total_width = bounds.size.w;  // Add this variable
