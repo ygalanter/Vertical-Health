@@ -217,15 +217,20 @@ static void prv_init(void)
   layer_add_child(data_layer, effect_layer_get_layer(effect_data_layer));
 
   // Create time layer at bottom of screen (1/4 of height)
-  int time_height = bounds.size.h / 2.8;
+  int time_height = bounds.size.h / 2.7;  
+
   int time_y = bounds.size.h - time_height;
   time_layer = text_layer_create(GRect(0, time_y, bounds.size.w, time_height));
-  text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_50)));
+
   text_layer_set_text_color(time_layer, GColorWhite);
   text_layer_set_background_color(time_layer, GColorClear);
   text_layer_set_text_alignment(time_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(time_layer));
-
+  #if PBL_DISPLAY_HEIGHT == 228
+    text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_72)));
+  #else
+    text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_50)));
+  #endif
   health_init(health_metrics_update);
   health_metrics_update();
 
