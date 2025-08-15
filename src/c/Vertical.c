@@ -2,7 +2,10 @@
 #include "pebble-effect-layer/pebble-effect-layer.h"
 #include "pebble-simple-health/pebble-simple-health.h"
 
-EffectLayer *effect_data_layer;
+EffectLayer *effect_data_layer, *effect_time_layer;
+EffectMask *mask;
+GRect mask_layer_rect;
+
 TextLayer *time_layer;
 
 char s_time[6];
@@ -24,7 +27,7 @@ void health_metrics_update()
   health_calories_active = health_get_metric_sum(HealthMetricActiveKCalories);
   health_calories_active_goal = health_get_metric_goal(HealthMetricActiveKCalories);
 
-  health_heart_rate =  health_service_peek_current_value(HealthMetricHeartRateBPM);
+  health_heart_rate = health_service_peek_current_value(HealthMetricHeartRateBPM);
 
   if (showing_health_data)
   {
@@ -33,7 +36,7 @@ void health_metrics_update()
     snprintf(data_strings[2], 20, "%d", health_calories_active);
     snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
     snprintf(data_strings[4], 20, "%d", health_heart_rate);
-  
+
     layer_mark_dirty(data_layer);
     layer_mark_dirty(graphics_layer);
   }
@@ -68,6 +71,10 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
       text_layer_set_text(time_layer, s_time);
     }
   }
+
+  // calculating current "gray" mask height based on time progress
+  int current_mask_height = mask_layer_rect.size.h * (tick_time->tm_hour * 60 + tick_time->tm_min) / (24 * 60);
+  effect_layer_set_frame(effect_time_layer, GRect(mask_layer_rect.origin.x, mask_layer_rect.origin.y + mask_layer_rect.size.h - current_mask_height, mask_layer_rect.size.w, current_mask_height));
 
   // Update date only when day changes
   if (units_changed & DAY_UNIT && !showing_health_data)
@@ -108,15 +115,19 @@ static void battery_state_handler(BatteryChargeState charge_state)
 
 static void tap_handler(AccelAxisType axis, int32_t direction)
 {
-  if (!health_is_available()){
+  if (!health_is_available())
+  {
     return;
   }
 
   showing_health_data = !showing_health_data; // Toggle health data display
 
-  if (showing_health_data) {
+  if (showing_health_data)
+  {
     health_metrics_update();
-  } else {
+  }
+  else
+  {
     // Get a time structure so that the face doesn't start blank
     time_t temp = time(NULL);
     struct tm *t = localtime(&temp);
@@ -126,12 +137,12 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
 
     // Manually call the battery handler to show battery percentage on load
     battery_state_handler(battery_state_service_peek());
-    }
-
+  }
 }
 
 // check if value is over 100 then return 100
-static int clamp_percentage(int value) {
+static int clamp_percentage(int value)
+{
   return (value > 100) ? 100 : value;
 }
 
@@ -151,7 +162,6 @@ static void graphics_update_proc(Layer *layer, GContext *ctx)
     int heart_rate_percent = clamp_percentage(health_heart_rate * 100 / 220); // Assuming max heart rate of 220 bpm
 
     draw_grey_columns(ctx, (int[]){step_percent, distance_percent, calories_active_percent, time_active_percent, heart_rate_percent});
-
   }
   else
   {
@@ -217,7 +227,7 @@ static void prv_init(void)
   layer_add_child(data_layer, effect_layer_get_layer(effect_data_layer));
 
   // Create time layer at bottom of screen (1/4 of height)
-  int time_height = bounds.size.h / 2.7;  
+  int time_height = bounds.size.h / 2.7;
 
   int time_y = bounds.size.h - time_height;
   time_layer = text_layer_create(GRect(0, time_y, bounds.size.w, time_height));
@@ -226,11 +236,35 @@ static void prv_init(void)
   text_layer_set_background_color(time_layer, GColorClear);
   text_layer_set_text_alignment(time_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(time_layer));
-  #if PBL_DISPLAY_HEIGHT == 228
-    text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_72)));
-  #else
-    text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_50)));
-  #endif
+#if PBL_DISPLAY_HEIGHT == 228
+  text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_72)));
+#else
+  text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_50)));
+#endif
+
+  // prepping mask to make white digits transparent so underlying "gray color" shows through
+  mask = malloc(sizeof(EffectMask));
+  mask->text = NULL;
+  mask->bitmap_mask = NULL;
+  mask->mask_colors = malloc(sizeof(GColor) * 2);
+  mask->mask_colors[0] = GColorWhite;
+  mask->mask_colors[1] = GColorClear;
+  mask->background_color = GColorClear;
+  // this bitmap is the "gray color", a checkered mix of black and white pixels
+  mask->bitmap_background = gbitmap_create_with_resource(RESOURCE_ID_GRAY);
+
+  // in the time layer actual digits are shorter than layer's size, adjusting mask layer height to only cover the digits
+  // this is needed because when mask layer height changes to show time progress, it should not cover the whole layer
+#if PBL_DISPLAY_HEIGHT == 228
+  mask_layer_rect = GRect(0, time_y + 22, bounds.size.w, time_height - 34);
+#else
+  mask_layer_rect = GRect(0, time_y + 15, bounds.size.w, time_height - 27);
+#endif
+
+  effect_time_layer = effect_layer_create(mask_layer_rect);
+  effect_layer_add_effect(effect_time_layer, effect_mask, mask);
+  layer_add_child(window_layer, effect_layer_get_layer(effect_time_layer));
+
   health_init(health_metrics_update);
   health_metrics_update();
 
@@ -261,6 +295,10 @@ static void prv_deinit(void)
   // Destroy layers
   text_layer_destroy(time_layer);
   effect_layer_destroy(effect_data_layer);
+  effect_layer_destroy(effect_time_layer);
+  gbitmap_destroy(mask->bitmap_background);
+  free(mask->mask_colors);
+  free(mask);
   layer_destroy(data_layer);
   layer_destroy(graphics_layer);
 
