@@ -79,6 +79,11 @@
           "file": "icons/heartRate.png",
           "name": "HEARTRATE",
           "type": "bitmap"
+        },
+        {
+           "file": "images/gray.png",
+           "name": "GRAY",
+           "type": "bitmap"
         }
       ]
     }
