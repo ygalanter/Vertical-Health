@@ -4,6 +4,7 @@
 
 EffectLayer *effect_data_layer, *effect_time_layer;
 EffectMask *mask;
+GRect mask_layer_rect;
 
 TextLayer *time_layer;
 
@@ -70,6 +71,10 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
       text_layer_set_text(time_layer, s_time);
     }
   }
+
+  // calculating current "gray" mask height based on time progress
+  int current_mask_height = mask_layer_rect.size.h * (tick_time->tm_hour * 60 + tick_time->tm_min) / (24 * 60);
+  effect_layer_set_frame(effect_time_layer, GRect(mask_layer_rect.origin.x, mask_layer_rect.origin.y + mask_layer_rect.size.h - current_mask_height, mask_layer_rect.size.w, current_mask_height));
 
   // Update date only when day changes
   if (units_changed & DAY_UNIT && !showing_health_data)
@@ -237,18 +242,26 @@ static void prv_init(void)
   text_layer_set_font(time_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_LECO_50)));
 #endif
 
+  // prepping mask to make white digits transparent so underlying "gray color" shows through
   mask = malloc(sizeof(EffectMask));
   mask->text = NULL;
   mask->bitmap_mask = NULL;
-
   mask->mask_colors = malloc(sizeof(GColor) * 2);
   mask->mask_colors[0] = GColorWhite;
   mask->mask_colors[1] = GColorClear;
-
   mask->background_color = GColorClear;
+  // this bitmap is the "gray color", a checkered mix of black and white pixels
   mask->bitmap_background = gbitmap_create_with_resource(RESOURCE_ID_GRAY);
 
-  effect_time_layer = effect_layer_create((GRect(0, time_y, bounds.size.w, time_height)));
+  // in the time layer actual digits are shorter than layer's size, adjusting mask layer height to only cover the digits
+  // this is needed because when mask layer height changes to show time progress, it should not cover the whole layer
+#if PBL_DISPLAY_HEIGHT == 228
+  mask_layer_rect = GRect(0, time_y + 22, bounds.size.w, time_height - 34);
+#else
+  mask_layer_rect = GRect(0, time_y + 15, bounds.size.w, time_height - 27);
+#endif
+
+  effect_time_layer = effect_layer_create(mask_layer_rect);
   effect_layer_add_effect(effect_time_layer, effect_mask, mask);
   layer_add_child(window_layer, effect_layer_get_layer(effect_time_layer));
 
