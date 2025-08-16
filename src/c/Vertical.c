@@ -35,7 +35,16 @@ void health_metrics_update()
     snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
     snprintf(data_strings[2], 20, "%d", health_calories_active);
     snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
-    snprintf(data_strings[4], 20, "%d", health_heart_rate);
+
+    if (health_heart_rate == 0)
+    {
+      snprintf(data_strings[4], 20, "N/A");
+      health_heart_rate = MAX_PULSE;
+    }
+    else
+    {
+      snprintf(data_strings[4], 20, "%d", health_heart_rate);
+    }
 
     layer_mark_dirty(data_layer);
     layer_mark_dirty(graphics_layer);
@@ -159,7 +168,7 @@ static void graphics_update_proc(Layer *layer, GContext *ctx)
     int distance_percent = clamp_percentage(health_distance * 100 / health_distance_goal);
     int time_active_percent = clamp_percentage(health_time_active * 100 / health_time_active_goal);
     int calories_active_percent = clamp_percentage(health_calories_active * 100 / health_calories_active_goal);
-    int heart_rate_percent = clamp_percentage(health_heart_rate * 100 / 220); // Assuming max heart rate of 220 bpm
+    int heart_rate_percent = clamp_percentage(health_heart_rate * 100 / MAX_PULSE);
 
     draw_grey_columns(ctx, (int[]){step_percent, distance_percent, calories_active_percent, time_active_percent, heart_rate_percent});
   }
