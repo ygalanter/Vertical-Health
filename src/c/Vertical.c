@@ -122,8 +122,16 @@ static void battery_state_handler(BatteryChargeState charge_state)
   }
 }
 
+static time_t last_tap_time = 0;
 static void tap_handler(AccelAxisType axis, int32_t direction)
 {
+
+  time_t now = time(NULL);
+  if (now - last_tap_time < 2) { // 2 second debounce
+    return;
+  }
+  last_tap_time = now;
+
   if (!health_is_available())
   {
     return;
@@ -280,6 +288,7 @@ static void prv_init(void)
   tick_timer_service_subscribe(MINUTE_UNIT | DAY_UNIT, tick_handler);
   battery_state_service_subscribe(battery_state_handler);
 
+  accel_service_set_samples_per_update(0);
   accel_tap_service_subscribe(&tap_handler);
 
   // Get a time structure so that the face doesn't start blank
