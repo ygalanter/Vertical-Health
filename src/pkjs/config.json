@@ -1,0 +1,22 @@
+[
+  { 
+    "type": "heading", 
+    "defaultValue": "Vertical Health Config" 
+  }, 
+{
+  "type": "section",
+  "items": [
+    {
+      "type": "toggle",
+      "messageKey": "SHOW_TIME_PROGRESS",
+      "label": "Show Time Progress",
+      "description": "Fill time digits as time progresses",
+      "defaultValue": true
+    }
+  ]
+},
+{
+  "type": "submit",
+  "defaultValue": "Save"
+}
+]

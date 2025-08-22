@@ -1,12 +1,13 @@
 {
   "name": "vertical-health",
   "author": "MakeAwesomeHappen",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "keywords": [
     "pebble-app"
   ],
   "private": true,
   "dependencies": {
+    "pebble-clay": "^1.0.4",
     "pebble-effect-layer": "^1.1.4",
     "pebble-simple-health": "^1.0.6"
   },
@@ -31,7 +32,7 @@
       "watchface": true
     },
     "messageKeys": [
-      "dummy"
+      "SHOW_TIME_PROGRESS"
     ],
     "resources": {
       "media": [
@@ -46,7 +47,7 @@
             "diorite"
           ]
         },
-                {
+        {
           "characterRegex": "[0-9:]",
           "file": "fonts/LECO_numbers_only.ttf",
           "name": "LECO_72",
@@ -81,9 +82,22 @@
           "type": "bitmap"
         },
         {
-           "file": "images/gray.png",
-           "name": "GRAY",
-           "type": "bitmap"
+          "file": "images/gray.png",
+          "name": "GRAY",
+          "type": "bitmap",
+          "targetPlatforms": [
+            "aplite",
+            "diorite"
+          ]
+        },
+        {
+          "file": "images/true_gray.png",
+          "name": "GRAY",
+          "type": "bitmap",
+          "targetPlatforms": [
+            "basalt",
+            "emery"
+          ]
         }
       ]
     }
