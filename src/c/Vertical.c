@@ -11,6 +11,49 @@ TextLayer *time_layer;
 char s_time[6];
 char data_strings[5][20];
 uint_least16_t health_steps, health_step_goal, health_distance, health_distance_goal, health_time_active, health_time_active_goal, health_calories_active, health_calories_active_goal, health_heart_rate;
+uint8_t flag_show_time_progress;
+
+// handle configuration change
+static void in_recv_handler(DictionaryIterator *iterator, void *context)
+{
+  Tuple *t;
+
+  t = dict_find(iterator, MESSAGE_KEY_SHOW_TIME_PROGRESS);
+  if (t)
+  { // show second hand
+    flag_show_time_progress = t->value->uint8;
+    persist_write_int(MESSAGE_KEY_SHOW_TIME_PROGRESS, flag_show_time_progress);
+    layer_set_hidden(effect_layer_get_layer(effect_time_layer), !flag_show_time_progress);
+  }
+}
+
+void show_health_data() {
+    if (showing_health_data)
+  {
+    snprintf(data_strings[0], 20, "%d", health_steps);
+    snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
+    snprintf(data_strings[2], 20, "%d", health_calories_active);
+    snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
+
+    
+    if (health_heart_rate == 0) 
+    {
+      health_heart_rate = MAX_PULSE;
+    }
+
+    if (health_heart_rate == MAX_PULSE) 
+    {
+      snprintf(data_strings[4], 20, "N/A");
+    }
+    else
+    {
+      snprintf(data_strings[4], 20, "%d", health_heart_rate);
+    }
+
+    layer_mark_dirty(data_layer);
+    layer_mark_dirty(graphics_layer);
+  }
+}
 
 void health_metrics_update()
 {
@@ -31,24 +74,9 @@ void health_metrics_update()
 
   if (showing_health_data)
   {
-    snprintf(data_strings[0], 20, "%d", health_steps);
-    snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
-    snprintf(data_strings[2], 20, "%d", health_calories_active);
-    snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
-
-    if (health_heart_rate == 0)
-    {
-      snprintf(data_strings[4], 20, "N/A");
-      health_heart_rate = MAX_PULSE;
-    }
-    else
-    {
-      snprintf(data_strings[4], 20, "%d", health_heart_rate);
-    }
-
-    layer_mark_dirty(data_layer);
-    layer_mark_dirty(graphics_layer);
+   show_health_data();
   }
+
 }
 
 void tick_handler(struct tm *tick_time, TimeUnits units_changed)
@@ -127,7 +155,8 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
 {
 
   time_t now = time(NULL);
-  if (now - last_tap_time < 2) { // 2 second debounce
+  if (now - last_tap_time < 2)
+  { // 2 second debounce
     return;
   }
   last_tap_time = now;
@@ -141,7 +170,7 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
 
   if (showing_health_data)
   {
-    health_metrics_update();
+   show_health_data();
   }
   else
   {
@@ -152,7 +181,7 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
     // Manually call the tick handler when the window is loading
     tick_handler(t, DAY_UNIT | MINUTE_UNIT);
 
-    // Manually call the battery handler to show battery percentage on load
+    // Manually call the battery handler to show battery percentage
     battery_state_handler(battery_state_service_peek());
   }
 }
@@ -282,6 +311,9 @@ static void prv_init(void)
   effect_layer_add_effect(effect_time_layer, effect_mask, mask);
   layer_add_child(window_layer, effect_layer_get_layer(effect_time_layer));
 
+  flag_show_time_progress = persist_exists(MESSAGE_KEY_SHOW_TIME_PROGRESS) ? persist_read_int(MESSAGE_KEY_SHOW_TIME_PROGRESS) : 1;
+  layer_set_hidden(effect_layer_get_layer(effect_time_layer), !flag_show_time_progress);
+
   health_init(health_metrics_update);
   health_metrics_update();
 
@@ -290,6 +322,10 @@ static void prv_init(void)
 
   accel_service_set_samples_per_update(0);
   accel_tap_service_subscribe(&tap_handler);
+
+  // subscribing to JS messages
+  app_message_register_inbox_received(in_recv_handler);
+  app_message_open(APP_MESSAGE_INBOX_SIZE_MINIMUM * 2, APP_MESSAGE_OUTBOX_SIZE_MINIMUM);
 
   // Get a time structure so that the face doesn't start blank
   time_t temp = time(NULL);
@@ -319,6 +355,8 @@ static void prv_deinit(void)
   free(mask);
   layer_destroy(data_layer);
   layer_destroy(graphics_layer);
+
+  app_message_deregister_callbacks();
 
   // Destroy window
   window_destroy(s_window);

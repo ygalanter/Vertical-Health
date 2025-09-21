@@ -3,6 +3,7 @@
 
 #define MAX_PULSE 220
 
+
 bool showing_health_data;
 
 static Window *s_window;
