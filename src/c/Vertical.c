@@ -27,6 +27,34 @@ static void in_recv_handler(DictionaryIterator *iterator, void *context)
   }
 }
 
+void show_health_data() {
+    if (showing_health_data)
+  {
+    snprintf(data_strings[0], 20, "%d", health_steps);
+    snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
+    snprintf(data_strings[2], 20, "%d", health_calories_active);
+    snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
+
+    
+    if (health_heart_rate == 0) 
+    {
+      health_heart_rate = MAX_PULSE;
+    }
+
+    if (health_heart_rate == MAX_PULSE) 
+    {
+      snprintf(data_strings[4], 20, "N/A");
+    }
+    else
+    {
+      snprintf(data_strings[4], 20, "%d", health_heart_rate);
+    }
+
+    layer_mark_dirty(data_layer);
+    layer_mark_dirty(graphics_layer);
+  }
+}
+
 void health_metrics_update()
 {
 
@@ -46,24 +74,9 @@ void health_metrics_update()
 
   if (showing_health_data)
   {
-    snprintf(data_strings[0], 20, "%d", health_steps);
-    snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
-    snprintf(data_strings[2], 20, "%d", health_calories_active);
-    snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
-
-    if (health_heart_rate == 0)
-    {
-      snprintf(data_strings[4], 20, "N/A");
-      health_heart_rate = MAX_PULSE;
-    }
-    else
-    {
-      snprintf(data_strings[4], 20, "%d", health_heart_rate);
-    }
-
-    layer_mark_dirty(data_layer);
-    layer_mark_dirty(graphics_layer);
+   show_health_data();
   }
+
 }
 
 void tick_handler(struct tm *tick_time, TimeUnits units_changed)
@@ -157,7 +170,7 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
 
   if (showing_health_data)
   {
-    health_metrics_update();
+   show_health_data();
   }
   else
   {
@@ -168,7 +181,7 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
     // Manually call the tick handler when the window is loading
     tick_handler(t, DAY_UNIT | MINUTE_UNIT);
 
-    // Manually call the battery handler to show battery percentage on load
+    // Manually call the battery handler to show battery percentage
     battery_state_handler(battery_state_service_peek());
   }
 }
