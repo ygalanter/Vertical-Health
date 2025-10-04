@@ -12,6 +12,8 @@ char s_time[6];
 char data_strings[5][20];
 uint_least16_t health_steps, health_step_goal, health_distance, health_distance_goal, health_time_active, health_time_active_goal, health_calories_active, health_calories_active_goal, health_heart_rate;
 uint8_t flag_show_time_progress;
+uint16_t health_display_timeout = 0;  // Timeout in seconds, 0 means disabled
+static AppTimer *health_display_timer = NULL;  // Timer for auto-return to main screen
 
 // handle configuration change
 static void in_recv_handler(DictionaryIterator *iterator, void *context)
@@ -24,6 +26,13 @@ static void in_recv_handler(DictionaryIterator *iterator, void *context)
     flag_show_time_progress = t->value->uint8;
     persist_write_int(MESSAGE_KEY_SHOW_TIME_PROGRESS, flag_show_time_progress);
     layer_set_hidden(effect_layer_get_layer(effect_time_layer), !flag_show_time_progress);
+  }
+  
+  t = dict_find(iterator, MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT);
+  if (t)
+  { // health display timeout
+    health_display_timeout = atol(t->value->cstring);
+    persist_write_int(MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT, health_display_timeout);
   }
 }
 
@@ -150,6 +159,27 @@ static void battery_state_handler(BatteryChargeState charge_state)
   }
 }
 
+// Function to return to main display after timeout
+static void return_to_main_display(void *data)
+{
+  health_display_timer = NULL;  // Timer has fired, clear the reference
+  
+  if (showing_health_data)
+  {
+    showing_health_data = false;
+    
+    // Get a time structure so that the face doesn't start blank
+    time_t temp = time(NULL);
+    struct tm *t = localtime(&temp);
+
+    // Manually call the tick handler when the window is loading
+    tick_handler(t, DAY_UNIT | MINUTE_UNIT);
+
+    // Manually call the battery handler to show battery percentage
+    battery_state_handler(battery_state_service_peek());
+  }
+}
+
 static time_t last_tap_time = 0;
 static void tap_handler(AccelAxisType axis, int32_t direction)
 {
@@ -168,9 +198,22 @@ static void tap_handler(AccelAxisType axis, int32_t direction)
 
   showing_health_data = !showing_health_data; // Toggle health data display
 
+  // Cancel any existing timer
+  if (health_display_timer != NULL)
+  {
+    app_timer_cancel(health_display_timer);
+    health_display_timer = NULL;
+  }
+
   if (showing_health_data)
   {
    show_health_data();
+   
+   // Start timeout timer if configured
+   if (health_display_timeout > 0)
+   {
+     health_display_timer = app_timer_register(health_display_timeout * 1000, return_to_main_display, NULL);
+   }
   }
   else
   {
@@ -313,6 +356,9 @@ static void prv_init(void)
 
   flag_show_time_progress = persist_exists(MESSAGE_KEY_SHOW_TIME_PROGRESS) ? persist_read_int(MESSAGE_KEY_SHOW_TIME_PROGRESS) : 1;
   layer_set_hidden(effect_layer_get_layer(effect_time_layer), !flag_show_time_progress);
+  
+  // Load the health display timeout setting
+  health_display_timeout = persist_exists(MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT) ? persist_read_int(MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT) : 0;
 
   health_init(health_metrics_update);
   health_metrics_update();
@@ -340,6 +386,13 @@ static void prv_init(void)
 
 static void prv_deinit(void)
 {
+  // Cancel any pending timer
+  if (health_display_timer != NULL)
+  {
+    app_timer_cancel(health_display_timer);
+    health_display_timer = NULL;
+  }
+  
   // Unsubscribe from services
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
