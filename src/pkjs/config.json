@@ -12,6 +12,19 @@
       "label": "Show Time Progress",
       "description": "Fill time digits as time progresses",
       "defaultValue": true
+    },
+    {
+      "type": "input",
+      "messageKey": "HEALTH_DISPLAY_TIMEOUT",
+      "label": "Health Display Timeout",
+      "description": "Seconds before returning to main screen (leave blank to disable)",
+      "defaultValue": "",
+      "attributes": {
+        "type": "number",
+        "min": "0",
+        "max": "300",
+        "placeholder": "e.g., 10"
+      }
     }
   ]
 },

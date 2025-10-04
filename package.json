@@ -1,7 +1,7 @@
 {
   "name": "vertical-health",
   "author": "MakeAwesomeHappen",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "keywords": [
     "pebble-app"
   ],
@@ -32,7 +32,8 @@
       "watchface": true
     },
     "messageKeys": [
-      "SHOW_TIME_PROGRESS"
+      "SHOW_TIME_PROGRESS",
+      "HEALTH_DISPLAY_TIMEOUT"
     ],
     "resources": {
       "media": [
