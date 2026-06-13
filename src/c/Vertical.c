@@ -6,14 +6,18 @@ EffectLayer *effect_data_layer, *effect_time_layer;
 EffectMask *mask;
 GRect mask_layer_rect;
 
+Window *s_window;
 TextLayer *time_layer;
 
 char s_time[6];
 char data_strings[5][20];
 uint_least16_t health_steps, health_step_goal, health_distance, health_distance_goal, health_time_active, health_time_active_goal, health_calories_active, health_calories_active_goal, health_heart_rate;
 uint8_t flag_show_time_progress;
+uint8_t flag_distance_kilometers = 0;  // 0 = miles, 1 = kilometers
 uint16_t health_display_timeout = 0;  // Timeout in seconds, 0 means disabled
 static AppTimer *health_display_timer = NULL;  // Timer for auto-return to main screen
+
+void show_health_data();
 
 // handle configuration change
 static void in_recv_handler(DictionaryIterator *iterator, void *context)
@@ -34,13 +38,31 @@ static void in_recv_handler(DictionaryIterator *iterator, void *context)
     health_display_timeout = atol(t->value->cstring);
     persist_write_int(MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT, health_display_timeout);
   }
+
+  t = dict_find(iterator, MESSAGE_KEY_DISTANCE_UNITS);
+  if (t)
+  { // distance units (0 = miles, 1 = kilometers)
+    flag_distance_kilometers = (atoi(t->value->cstring) == 1) ? 1 : 0;
+    persist_write_int(MESSAGE_KEY_DISTANCE_UNITS, flag_distance_kilometers);
+    if (showing_health_data)
+    {
+      show_health_data();
+    }
+  }
 }
 
 void show_health_data() {
     if (showing_health_data)
   {
     snprintf(data_strings[0], 20, "%d", health_steps);
-    snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
+    if (flag_distance_kilometers)
+    {
+      snprintf(data_strings[1], 20, "%d.%d km", health_distance / 1000, (health_distance % 1000) / 100);
+    }
+    else
+    {
+      snprintf(data_strings[1], 20, "%d.%d mi", health_distance / 1609, health_distance * 1000 / 1609 % 1000 / 100);
+    }
     snprintf(data_strings[2], 20, "%d", health_calories_active);
     snprintf(data_strings[3], 20, "%02d:%02d", health_time_active / 3600, (health_time_active % 3600) / 60);
 
@@ -94,7 +116,7 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed)
   if (units_changed & MINUTE_UNIT)
   {
 
-    char format[5];
+    char format[6];
 
     // building format 12h/24h
     if (clock_is_24h_style())
@@ -359,6 +381,9 @@ static void prv_init(void)
   
   // Load the health display timeout setting
   health_display_timeout = persist_exists(MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT) ? persist_read_int(MESSAGE_KEY_HEALTH_DISPLAY_TIMEOUT) : 0;
+
+  // Load the distance units setting (0 = miles, 1 = kilometers)
+  flag_distance_kilometers = persist_exists(MESSAGE_KEY_DISTANCE_UNITS) ? persist_read_int(MESSAGE_KEY_DISTANCE_UNITS) : 0;
 
   health_init(health_metrics_update);
   health_metrics_update();

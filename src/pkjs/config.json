@@ -25,6 +25,16 @@
         "max": "300",
         "placeholder": "e.g., 10"
       }
+    },
+    {
+      "type": "select",
+      "messageKey": "DISTANCE_UNITS",
+      "label": "Distance Units",
+      "defaultValue": "0",
+      "options": [
+        { "label": "Miles",      "value": "0" },
+        { "label": "Kilometers", "value": "1" }
+      ]
     }
   ]
 },
