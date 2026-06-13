@@ -6,8 +6,6 @@
 
 bool showing_health_data;
 
-static Window *s_window;
-
 GRect bounds; GPoint center;
 
 Layer *data_layer, *graphics_layer, *window_layer;

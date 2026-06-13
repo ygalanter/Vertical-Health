@@ -21,7 +21,6 @@ def configure(ctx):
     Universal configuration: add your change prior to calling ctx.load('pebble_sdk').
     """
     ctx.load('pebble_sdk')
-    ctx.load('clang_compilation_database')
 
 def build(ctx):
     ctx.load('pebble_sdk')
